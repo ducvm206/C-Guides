@@ -274,8 +274,78 @@ However, before setting up the socket for an actual connection, we need to set u
 2. `sockaddr_in`:
 As stated above in the [socket structure](#221-initialization) part, the `sockaddr_in` is the structure containing all of the variables for the socket.
 ```c
+// Server side socket
+struct sockaddr_in addr;
+addr.sin_family = AF_INET;                                      // IPv4
+addr.sin_addr.s_addr = INADDR_ANY                               // Accept connection from any address
+addr.sin_port = htons(8080)                                     // Port is 8080
+
+// Client side socket
+struct sockaddr_in addr;
+addr.sin_family = AF_INET;                                      // IPv4
+addr.sin_addr.s_addr = inet_addr("192.168.32.16")               // Client address
+addr.sin_port = htons(8080)                                     // Port is 8080
 ```
 
+3. `bind()`:
+After setting up the address structure, the `bind()` function is called to bind that address to the initialized socket.
+```c
+int status = bind(sock_fd, (struct sockaddr *)&addr, sizeof(addr));
+```
+This function takes in three parameters:
+- `int sock_fd`: The socket to bind to, initialized via `socket()`.
+- `const struct sockaddr *addr`: The socket address structure, casted to `sockaddr` from `sockaddr_in`.
+- `socklen_t addrlen`: The size of the address, use `sizeof()`.
+
+`bind()` returns `0` if success, `-1` if fail.
+
+4. `listen()` and `accept()` (server-side only):
+`listen()` is used to setup a server-side socket into listening for incoming connections from clients.
+```c
+int status = listen(sock_fd, 10);
+```
+This function takes in two parameters:
+- `int sock_fd`: The socket to bind to, initialized via `socket()`.
+- `int backlog`: Number of queued connections allowed at once.
+
+While, `accept()` is used to accept incoming connections from other clients.
+```c
+struct sockaddr_in client_addr;                                                       // Set up address structure of client
+socklen_t client_len = sizeof(client_addr);                                           // Size of client_addr structure
+int client_fd = accept(server_fd, (struct sockaddr *)&client_addr, &client_len);      // Accept new clients from here
+```
+This function takes in three parameters:
+- `int server_fd`: The server's socket.
+- `const struct sockaddr *client_addr`: The pointer to the socket address structure of the client, casted to `sockaddr` from `sockaddr_in`.
+- `socklen_t *client_len`: The pointer to the size of the address, use `sizeof()` before hand (do not call directly in function).
+
+Returns a value greater than `0` if success, `<0` if fail.
+This function goes **inside** the `while` loop of the server.
+
+5. `connect()` (client-side only):
+```c
+struct sockaddr_in server_addr = {0};                          // Initialize address structure of server
+server_addr.sin_family = AF_INET;                              // Set up protocol, port and IP.
+server_addr.sin_port = htons(8080);
+inet_pton(AF_INET, "127.0.0.1", &server_addr.sin_addr);
+int status = connect(client_fd, (struct sockaddr *)&server_addr, sizeof(server_addr));  // Perform connection to server
+```
+
+This function takes in three parameters:
+- `int client_fd`: The client's socket.
+- `const struct sockaddr *server_addr`: The pointer to the socket address structure of the server, casted to `sockaddr` from `sockaddr_in`.
+- `socklen_t addrlen`: The pointer to the size of the address, use `sizeof()` inside the function call.
+
+6. `send()`:
+`send()` is used to send data through a connected socket.
+```c
+ssize_t send(int sock_fd, const void buf*, size_t len, int flags);
+```
+This function takes in four variables:
+- `int sock_fd`: The socket you want to send data with. 
+- `const void *buf`: The data you want to send, can be in `string` form or anything that represents data.
+- `size_t len`: The number of bytes to send through. Often set to buffer size if exist, can use `sizeof()` if want to send all data at once.
+- `int flags`: Flags, usually set to `0`.
 
 ### 2.5. Utility functions
 
