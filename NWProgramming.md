@@ -253,7 +253,7 @@ void resolve(char domain[]) {
 
 ### 2.4. Client - Server structure
 #### 2.4.1. Common functions
-1. `socket()`:
+##### 2.4.1.1. `socket()`:
 UNIX sockets are initialized as file descriptors (integers in UNIX), representing the created socket.
 
 The function `socket()` is used to perform such a task, from the `sys/socket.h` library.
@@ -271,7 +271,7 @@ int udpsock_fd = socket(AF_INET, SOCK_DGRAM, 0);        // Creating an UDP IPv4 
 
 However, before setting up the socket for an actual connection, we need to set up the addresses for the socket, this is where the socket address structures come into handy.
 
-2. `sockaddr_in`:
+##### 2.4.1.2. `sockaddr_in`:
 As stated above in the [socket structure](#221-initialization) part, the `sockaddr_in` is the structure containing all of the variables for the socket.
 ```c
 // Server side socket
@@ -287,7 +287,7 @@ addr.sin_addr.s_addr = inet_addr("192.168.32.16")               // Client addres
 addr.sin_port = htons(8080)                                     // Port is 8080
 ```
 
-3. `bind()`:
+##### 2.4.1.3. `bind()`:
 After setting up the address structure, the `bind()` function is called to bind that address to the initialized socket.
 ```c
 int status = bind(sock_fd, (struct sockaddr *)&addr, sizeof(addr));
@@ -299,7 +299,7 @@ This function takes in three parameters:
 
 `bind()` returns `0` if success, `-1` if fail.
 
-4. `listen()` and `accept()` (server-side only):
+##### 2.4.1.4. `listen()` and `accept()` (server-side only):
 `listen()` is used to setup a server-side socket into listening for incoming connections from clients.
 ```c
 int status = listen(sock_fd, 10);
@@ -322,7 +322,7 @@ This function takes in three parameters:
 Returns a value greater than `0` if success, `<0` if fail.
 This function goes **inside** the `while` loop of the server.
 
-5. `connect()` (client-side only):
+##### 2.4.1.5. `connect()` (client-side only):
 ```c
 struct sockaddr_in server_addr = {0};                          // Initialize address structure of server
 server_addr.sin_family = AF_INET;                              // Set up protocol, port and IP.
@@ -336,7 +336,7 @@ This function takes in three parameters:
 - `const struct sockaddr *server_addr`: The pointer to the socket address structure of the server, casted to `sockaddr` from `sockaddr_in`.
 - `socklen_t addrlen`: The pointer to the size of the address, use `sizeof()` inside the function call.
 
-6. `send()`:
+##### 2.4.1.6. `send()`:
 `send()` is used to send data through a connected socket.
 ```c
 ssize_t send(int sock_fd, const void buf*, size_t len, int flags);
@@ -365,6 +365,3 @@ The port number can be extracted via ```ntohs()```.
 ```c
 int port = ntohs(addr.sin_port);
 ```
-
-### 2.4. 
-
