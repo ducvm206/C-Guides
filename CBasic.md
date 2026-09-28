@@ -8,6 +8,7 @@
 4. [C I/O Operations](#4-io-operations)
 5. [C Strings](#5-strings)
 6. [C File Operations](#6-file)
+7. [C File System](#7-c-file-system-(dirent))
 
 ## 1. Data Types
 
@@ -910,7 +911,7 @@ struct dirent {
     off_t d_off;                    // Offset
     unsigned short d_reclen;        // Record length
     unsigned char d_type;           // Entry type
-    char d_name[]                     // Entry name
+    char d_name[];                  // Entry name
 }
 ```
 
@@ -940,8 +941,46 @@ DIR *dir = opendir(".");                // Open the current directory.
 
 ### 7.2. `readdir()`
 
-`readdir()` uses the `DIR *` object retrieved via `opendir()`, returning a `struct dirend` that we talked about earlier.
+`readdir()` uses the `DIR *` object retrieved via `opendir()`, returning a `struct dirend` singly linked list that we talked about earlier.
 ```c
 DIR *dir = opendir("."); 
-struct dirent *entry = readdir(dir);
+struct dirent *entry = readdir(dir);            // Get the first element of the linked list
+printf("%d", entry->d_name);                    // Print the filename
 ```
+
+For each time `readdir()` is called, the next element if the file list is returned, so we use a `while` loop to list all files like so.
+```c
+DIR *dir = opendir("."); 
+struct dirent *entry = readdir(dir);            // Get the first element of the linked list
+while ((entry = readdir(dir)) != NULL) {
+    printf("%s\n", entry->d_name);
+}
+```
+
+## 8. Bit manipulation
+### 8.1. Accessing the bytes of a variable
+
+To be able to access the bytes of a variable with a datatype, we cast the variable to `unsigned char *`, returning an array of bytes representing that variable. 
+
+Since using `unsigned char *` returns a pointer to the first element of the byte array while `unsigned char` only does a direct value conversion, the pointer version is used.
+
+```c
+float f = 3.14f;                            // Initialize the variable value
+unsigned char *p = (unsigned char *)&x;     // Cast to unsigned char
+```
+
+After this, each byte can be accessed via `p[0]`,`p[1]`, `p[2]`, etc. A for loop can be used to do such a task.
+```c
+for (size_t i = 0; i < sizeof(x); i++) {
+    printf("%02X ", p[i]);                  // Print out as 2 characters
+}
+```
+
+The individual bit representation of each byte can also be done.
+```c
+for (int i = 7; i >= 0; i--) {
+    printf("%d", (p[0] >> i) & 1);          // Print out all bits on a row
+}
+```
+
+

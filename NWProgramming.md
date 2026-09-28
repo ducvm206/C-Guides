@@ -71,7 +71,7 @@ TCP provides connections between clients and servers, provides reliability via:
                           close()                       close()
 
 
-## 2. UNIX network programming on C
+## 2. Basics
 ### 2.1. Headers
 Commonly used headers:
 ```c
@@ -97,8 +97,10 @@ Commonly used headers:
 
 ### 2.2. Socket address structure
 ### 2.2.1. Initialization
+
 There are three main address structures for a socket.
-- `struct sockaddr`: Is the general structure, can be used to represent both IPv4 and IPv6 addresses. Must be casted into the other two types to be able to pass parameters into the socket.
+#### 1. `struct sockaddr`: 
+Is the general structure, can be used to represent both IPv4 and IPv6 addresses. Must be casted into the other two types to be able to pass parameters into the socket, or the IPv4 and IPv6 types are casted back to `sockaddr`
 ```c
 struct sockaddr {
     sa_family_t sa_family;
@@ -106,7 +108,21 @@ struct sockaddr {
 };
 ```
 
-- `struct sockaddr_in`: Used for IPv4 processing.
+Example: Casting to `sockaddr_in` or `sockaddr_in6` for domain resolving.
+```c
+struct sockaddr *addr;
+struct sockaddr_in *ipv4 = (struct sockaddr_in *)addr;
+```
+
+Example: Casting `sockaddr_in` back to `sockaddr` for binding.
+```c
+struct sockaddr_in addr;
+// Add parameters to addr
+bind(server_fd, (struct sockaddr *)&addr, sizeof(addr));
+```
+
+#### 2. `struct sockaddr_in`: 
+Used for IPv4 processing.
 ```c
 struct sockaddr_in {
     uint_8 sin_len;                 // Structure length (16 bytes)
@@ -116,19 +132,23 @@ struct sockaddr_in {
     char sin_zero[8];               // Unused field
 }
 ```
-1. ```sin_family``` : Used to determine the type of IP. ```AF_INET``` for IPv4 and ```AF_INET6``` for IPv6.
+- ```sin_family``` : Used to determine the type of IP. ```AF_INET``` for IPv4 and ```AF_INET6``` for IPv6.
 
-2. ```sin_port``` : The bytes of the port number, from 0 to 65535. Convert an **integer** representing port number to network bytes using ```htons(port_num)```.
+- ```sin_port``` : The bytes of the port number, from 0 to 65535. Convert an **integer** representing port number to network bytes using ```htons(port_num)```.
 
-3. ```sin_addr``` : Contains the IP of the socket, modify the ```s_addr``` of this. Use ```INADDR_ANY``` to allow for any connections from any IP or use ```inet_addr(ip_string)``` to determine the IP of the socket for the client side.
+- ```sin_addr``` : Contains the IP of the socket, modify the ```s_addr``` of this. Use ```INADDR_ANY``` to allow for any connections from any IP or use ```inet_addr(ip_string)``` to determine the IP of the socket for the client side.
 
-- `struct sockaddr_in6`: Used for IPv6 processing.
+#### 3. `struct sockaddr_in6`: Used for IPv6 processing.
 
 
 Usually, at least for IPv4, we use the data type ```sockaddr_in``` from the library ```netinet/in.h``` to provide an address to an IPv4 socket.
 
-Example of setting up the socket for server and client side:
+Example of casting sockaddr to IPv4 type, setting up the socket for server and client side:
 ```c
+// Casting to IPv4
+struct sockaddr *addr;
+struct sockaddr_in *ipv4 = (struct sockaddr_in *)addr;
+
 // Server side socket
 struct sockaddr_in addr;
 addr.sin_family = AF_INET;                                      // IPv4
@@ -142,8 +162,8 @@ addr.sin_addr.s_addr = inet_addr("192.168.32.16")               // Client addres
 addr.sin_port = htons(8080)                                     // Port is 8080
 ```
 
-### 2.2. Domain resolving
-#### 2.2.1. Data structures
+### 2.3. Domain resolving
+#### 2.3.1. Data structures
 Address information are saved under the ```addrinfo``` struct.
 ```c
 #include <netdb.h>
@@ -178,7 +198,7 @@ int port = ntohs(out->sin_port);                        // Extract port number
 
 - `ai_next` points to the next element if the resolved linked list of addresses.
 
-#### 2.2.2. Resolving
+#### 2.3.2. Resolving
 
 To resolve the address of a domain, we use the function `getaddrinfo()`.
 ```c
@@ -207,31 +227,57 @@ void resolve(char domain[]) {
 
     struct addrinfo *cur = res;         // Pointer to current node (1st node)
     while (cur != NULL) {
+        // Prints IPv4 value if the address type is IPv4
+        if (cur->ai_family == AF_INET) {
+            printf("IPv4\n");
+            struct sockaddr_in *addr = (struct sockaddr_in *)cur->ai_addr;
+            char ip[INET_ADDRSTRLEN];
+            inet_ntop(AF_INET, &addr->sin_addr, ip, sizeof(ip));
+            printf("Address: %s\n", ip);
+            printf("Port: %d\n", ntohs(addr->sin_port));
+        // Print IPv6 value if the address type is IPv6
+        } else if (cur->ai_family == AF_INET6) {
+            printf("IPv6\n");
+            struct sockaddr_in6 *addr = (struct sockaddr_in6 *)cur->ai_addr;
+            char ip[INET6_ADDRSTRLEN];
+            inet_ntop(AF_INET6, &addr->sin6_addr, ip, sizeof(ip));
 
-    if (cur->ai_family == AF_INET) {
-        printf("IPv4\n");
-        struct sockaddr_in *addr = (struct sockaddr_in *)cur->ai_addr;
-        char ip[INET_ADDRSTRLEN];
-        inet_ntop(AF_INET, &addr->sin_addr, ip, sizeof(ip));
-        printf("Address: %s\n", ip);
-        printf("Port: %d\n", ntohs(addr->sin_port));
+            printf("Address: %s\n", ip);
+            printf("Port: %d\n", ntohs(addr->sin6_port));
+        }
 
-    } else if (cur->ai_family == AF_INET6) {
-        printf("IPv6\n");
-        struct sockaddr_in6 *addr = (struct sockaddr_in6 *)cur->ai_addr;
-        char ip[INET6_ADDRSTRLEN];
-        inet_ntop(AF_INET6, &addr->sin6_addr, ip, sizeof(ip));
-
-        printf("Address: %s\n", ip);
-        printf("Port: %d\n", ntohs(addr->sin6_port));
+        cur = cur->ai_next;
     }
-
-    cur = cur->ai_next;
-}
 }
 ```
 
-### 2.3. Utility functions
+### 2.4. Client - Server structure
+#### 2.4.1. Common functions
+1. `socket()`:
+UNIX sockets are initialized as file descriptors (integers in UNIX), representing the created socket.
+
+The function `socket()` is used to perform such a task, from the `sys/socket.h` library.
+
+```c
+int sock_fd = socket(AF_INET, SOCK_STREAM, 0);          // Creating a TCP IPv4 socket
+int sock_fd6 = socket(AF_INET6, SOCK_STREAM, 0);        // Creating a TCP IPv6 socket
+int udpsock_fd = socket(AF_INET, SOCK_DGRAM, 0);        // Creating an UDP IPv4 socket
+```
+
+`socket()` takes in three parameters:
+- `int domain`: The domain of the socket connection. Can be `AF_INET` or `AF_INET6` for either IPv4 or IPv6.
+- `int type`: The type of the socket. Can be `SOCK_STREAM` for TCP or `SOCK_DGRAM` for UDP.
+- `int protocol`: The protocol of the socket. Usually set to `0` for the OS to choose the domain and type automatically.
+
+However, before setting up the socket for an actual connection, we need to set up the addresses for the socket, this is where the socket address structures come into handy.
+
+2. `sockaddr_in`:
+As stated above in the [socket structure](#221-initialization) part, the `sockaddr_in` is the structure containing all of the variables for the socket.
+```c
+```
+
+
+### 2.5. Utility functions
 
 You can retrieve the IPv4 string format from the network bytes using ```inet_ntoa```.
 ```c
@@ -240,13 +286,15 @@ char *ip = inet_ntoa(sin_addr);                                 // Returns the I
 
 Additionally, ```inet_ntop``` can also be used, returning NULL if error.
 ```c
-struct sockaddr_in *addr;                                       // Initialize a pointer to the socket address structure
+struct sockaddr_in *addr;                                  // Initialize a pointer to the socket address structure
 char ip[];
-inet_ntop(AF_INET, &addr->sin_addr, ip, sizeof(ip));            // Writes the IP string into the string variable
+inet_ntop(AF_INET, &addr->sin_addr, ip, sizeof(ip));       // Writes the IP string into the string variable
 ```
 
 The port number can be extracted via ```ntohs()```.
 ```c
 int port = ntohs(addr.sin_port);
 ```
+
+### 2.4. 
 
