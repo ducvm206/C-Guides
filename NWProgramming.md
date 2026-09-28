@@ -253,7 +253,7 @@ void resolve(char domain[]) {
 
 ### 2.4. Client - Server structure
 #### 2.4.1. Common functions
-##### 2.4.1.1. `socket()`:
+1. `socket()`:
 UNIX sockets are initialized as file descriptors (integers in UNIX), representing the created socket.
 
 The function `socket()` is used to perform such a task, from the `sys/socket.h` library.
@@ -271,7 +271,7 @@ int udpsock_fd = socket(AF_INET, SOCK_DGRAM, 0);        // Creating an UDP IPv4 
 
 However, before setting up the socket for an actual connection, we need to set up the addresses for the socket, this is where the socket address structures come into handy.
 
-##### 2.4.1.2. `sockaddr_in`:
+2. `sockaddr_in`:
 As stated above in the [socket structure](#221-initialization) part, the `sockaddr_in` is the structure containing all of the variables for the socket.
 ```c
 // Server side socket
@@ -287,7 +287,7 @@ addr.sin_addr.s_addr = inet_addr("192.168.32.16")               // Client addres
 addr.sin_port = htons(8080)                                     // Port is 8080
 ```
 
-##### 2.4.1.3. `bind()`:
+3. `bind()`:
 After setting up the address structure, the `bind()` function is called to bind that address to the initialized socket.
 ```c
 int status = bind(sock_fd, (struct sockaddr *)&addr, sizeof(addr));
@@ -299,7 +299,7 @@ This function takes in three parameters:
 
 `bind()` returns `0` if success, `-1` if fail.
 
-##### 2.4.1.4. `listen()` and `accept()` (server-side only):
+4. `listen()` and `accept()` (server-side only):
 `listen()` is used to setup a server-side socket into listening for incoming connections from clients.
 ```c
 int status = listen(sock_fd, 10);
@@ -322,7 +322,7 @@ This function takes in three parameters:
 Returns a value greater than `0` if success, `<0` if fail.
 This function goes **inside** the `while` loop of the server.
 
-##### 2.4.1.5. `connect()` (client-side only):
+5. `connect()` (client-side only):
 ```c
 struct sockaddr_in server_addr = {0};                          // Initialize address structure of server
 server_addr.sin_family = AF_INET;                              // Set up protocol, port and IP.
@@ -336,16 +336,39 @@ This function takes in three parameters:
 - `const struct sockaddr *server_addr`: The pointer to the socket address structure of the server, casted to `sockaddr` from `sockaddr_in`.
 - `socklen_t addrlen`: The pointer to the size of the address, use `sizeof()` inside the function call.
 
-##### 2.4.1.6. `send()`:
+6. `send()`:
 `send()` is used to send data through a connected socket.
 ```c
 ssize_t send(int sock_fd, const void buf*, size_t len, int flags);
 ```
 This function takes in four variables:
 - `int sock_fd`: The socket you want to send data with. 
-- `const void *buf`: The data you want to send, can be in `string` form or anything that represents data.
+- `const void *buf`: The pointer to the first byte you want to send, can be any type of data. This can 
 - `size_t len`: The number of bytes to send through. Often set to buffer size if exist, can use `sizeof()` if want to send all data at once.
 - `int flags`: Flags, usually set to `0`.
+
+This function returns the number of bytes sent via the function call, returns `0` if connection closed or `-1` if there was an error.
+
+In real applications, a buffer is used as there's no guarantee the entire data is sent in complete due to system or network limits. Thus, a `send_all` function can be used to send all data at once.
+```c
+void send_all(int client_fd, char response[]) {
+    size_t total = strlen(response);                                          // Total number of bytes of the data to send
+    size_t total_sent = 0;                                                    // Total bytes already sent
+
+    while (total_sent < total) {                                              
+        size_t remaining = total - total_sent;                                // Reduce the remaining number of bytes left to send
+        size_t buffer = remaining < BUFFER_SIZE ? remaining : BUFFER_SIZE;    // Data buffer to be sent in this loop (send full buffer size if remaining > buffer size, directly if not)
+
+        ssize_t sent = send(client_fd, response + total_sent, buffer, 0);     // Send the data buffer (response + total_sent means advance the data by number of bytes send then send)
+
+        if (sent <= 0) {
+            if (sent < 0) perror("send");
+            break;
+        }
+        total_sent += sent;
+    }
+}
+```
 
 ### 2.5. Utility functions
 
