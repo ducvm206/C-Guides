@@ -251,7 +251,7 @@ void resolve(char domain[]) {
 }
 ```
 
-### 2.4. Client - Server structure
+### 2.4. TCP Network Programming
 #### 2.4.1. Common functions
 #### 1. `socket()`:
 UNIX sockets are initialized as file descriptors (integers in UNIX), representing the created socket.
@@ -392,37 +392,18 @@ if (n > 0) {
 
 You can also use a loop to keep calling `recv()` until all data is received.
 ```c
-#define BUFFER_SIZE 16384
-
-ssize_t recv_until_crlf(int sock_fd, char *buffer, size_t buffer_size)
-{
-    size_t received = 0;
-
-    while (received < buffer_size - 1) {
-        ssize_t n = recv(sock_fd, buffer + received, 1, 0);
-
-        if (n <= 0) {
-            return -1;
-        }
-
-        received += n;
-
-        if (received >= 2 &&
-            buffer[received - 2] == '\r' &&
-            buffer[received - 1] == '\n') {
-
-            buffer[received - 2] = '\0';
-            return received - 2;
-        }
-    }
-
-    buffer[received] = '\0';
-    return -1; // Buffer filled before delimiter
+while ((n = recv(client_fd, buffer, sizeof(buffer) - 1, 0)) > 0) {
+  buffer[n] = '\0';
+  printf("%s", buffer);
 }
 ```
 
+### 2.5. UDP Network Programming
+We initiate the socket via `socket()` and use `struct sockaddr_in` with `bind()` like with TCP, but with important differences.
 
-### 2.5. Utility functions
+
+
+### 2.6. Utility functions
 
 You can retrieve the IPv4 string format from the network bytes using ```inet_ntoa```.
 ```c
