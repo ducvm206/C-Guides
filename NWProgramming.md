@@ -343,7 +343,7 @@ ssize_t send(int sock_fd, const void buf*, size_t len, int flags);
 ```
 This function takes in four variables:
 - `int sock_fd`: The socket you want to send data with. 
-- `const void *buf`: The pointer to the first byte you want to send, can be any type of data. This can 
+- `const void *buf`: The pointer to the first byte you want to send, can be any type of data.
 - `size_t len`: The number of bytes to send through. Often set to buffer size if exist, can use `sizeof()` if want to send all data at once.
 - `int flags`: Flags, usually set to `0`.
 
@@ -369,6 +369,58 @@ void send_all(int client_fd, char response[]) {
     }
 }
 ```
+
+#### 7. `recv()`:
+Conversely, `recv()` is the function used for the socket to fetch data sent to it.
+```c
+ssize_t recv(int sock_fd, void buf*, size_t len, int flags);
+```
+This function takes in four variables:
+- `int sock_fd`: The socket you want to send data with. 
+- `const void *buf`: The pointer to the buffer you want to receive data and put them into.
+- `size_t len`: The number of bytes to receive. Often set to buffer size if exist, can use `sizeof()` if want to send all data at once.
+- `int flags`: Flags, usually set to `0`.
+
+When receiving a string, and for the case is that data is received on one `recv()` call, it is usually best practice to receive data in size of `buffer size - 1`, leaving the last byte for the null terminator just in case.
+```c
+char buffer[BUFF_SIZE];
+ssize_t n = recv(sock_fd, buffer, BUFF_SIZE - 1, 0);
+if (n > 0) {
+  buffer[n] = '\0';       // Set index n + 1 to be null terminator
+}
+```
+
+You can also use a loop to keep calling `recv()` until all data is received.
+```c
+#define BUFFER_SIZE 16384
+
+ssize_t recv_until_crlf(int sock_fd, char *buffer, size_t buffer_size)
+{
+    size_t received = 0;
+
+    while (received < buffer_size - 1) {
+        ssize_t n = recv(sock_fd, buffer + received, 1, 0);
+
+        if (n <= 0) {
+            return -1;
+        }
+
+        received += n;
+
+        if (received >= 2 &&
+            buffer[received - 2] == '\r' &&
+            buffer[received - 1] == '\n') {
+
+            buffer[received - 2] = '\0';
+            return received - 2;
+        }
+    }
+
+    buffer[received] = '\0';
+    return -1; // Buffer filled before delimiter
+}
+```
+
 
 ### 2.5. Utility functions
 
