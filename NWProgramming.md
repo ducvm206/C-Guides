@@ -689,12 +689,14 @@ int pthread_mutex_unlock(pthread_mutex_t *mutex);
 int pthread_mutex_destroy(pthread_mutex_t *mutex);
 ```
 
+- `PTHREAD_MUTEX_INITIALIZER`: Constant used to initialize a mutex for usage.
 - `pthread_mutex_t`: Opaque mutex object; initialize statically as above, or dynamically using `pthread_mutex_init()`.
 - `pthread_mutex_lock()`: Acquire the lock before modifying shared data.
 - `pthread_mutex_unlock()`: Release the lock afterward.
 - `pthread_mutex_destroy()`: Clean up an unlocked mutex when it is no longer used.
 - These methods return `0` on success or an error number.
 
+Example usage:
 ```c
 pthread_mutex_t lock = PTHREAD_MUTEX_INITIALIZER;
 int total_clients = 0;                       // Shared between threads
@@ -703,6 +705,24 @@ int total_clients = 0;                       // Shared between threads
 pthread_mutex_lock(&lock);
 total_clients++;                             // Protected shared update
 pthread_mutex_unlock(&lock);
+```
+
+Moreover, a server can use many different mutexes to give more leniency to the server processes, only blocking certain actions (like two threads writing to the same endpoint), while letting actions that don't need to be blocked against each other run concurrently.
+
+Example:
+```c
+pthread_mutex_t db_lock = PTHREAD_MUTEX_INITIALIZER;
+pthread_mutex_t send_lock = PTHREAD_MUTEX_INITIALIZER;
+
+// Thread A: modify the client database (linked list)
+pthread_mutex_lock(&db_lock);
+add_client(client_socket);
+pthread_mutex_unlock(&db_lock);
+
+// Thread B: send a message to a client
+pthread_mutex_lock(&send_lock);
+send_all(client_socket, message, message_len);
+pthread_mutex_unlock(&send_lock);
 ```
 
 ##### 4. Example: thread-per-client TCP server
